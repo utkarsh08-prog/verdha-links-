@@ -789,7 +789,7 @@ function VideoTestimonials() {
   }, []);
 
   const baseVideos = [
-    "test1.mp4",
+    "https://drive.google.com/uc?export=download&id=1q9lIK8KavQG_OcXVUe_WOoS12yOw1X1b",
     "test2.mp4",
     "test3.mp4",
     "test4.mp4",
@@ -873,7 +873,7 @@ function VideoTestimonials() {
             <div key={i} style={{ minWidth: `${100 / slidesPerView}%` }} className="px-2">
               <video
                 ref={(el) => (videoRefs.current[i] = el)}
-                src={`/${src}`}
+                src={src}
                 className="w-full h-56 sm:h-64 md:h-72 lg:h-80 object-cover rounded-xl shadow-xl"
                 muted
                 playsInline
