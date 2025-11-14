@@ -20,7 +20,7 @@ const RegisterButton = ({ amount = 99, className = "btn", label = "Register Now 
       await loadRazorpayScript();
 
       // 1️⃣ Create order on backend
-      const res = await fetch("http://localhost:5000/create-order", {
+      const res = await fetch("https://vlbackend-ax94.onrender.com/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ amount }),
