@@ -2,23 +2,28 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { Target, Layers, TrendingUp, Users, Lightbulb, CheckCircle } from "lucide-react";
+import RegisterButton from "./RegisterButton";
 
 /*********************************
  * Shared UI
  *********************************/
 function PrimaryButton({ label = "Register Now At ₹99/- Only", className = "", ...props }) {
-  return (
-    <button
-      className={
-        "px-8 py-3 md:px-12 md:py-4 bg-gradient-to-r from-yellow-300 to-yellow-500 text-black font-semibold " +
-        "text-sm md:text-base rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 transition " +
-        className
-      }
-      {...props}
-    >
-      {label}
-    </button>
-  );
+  const classes =
+    "px-8 py-3 md:px-12 md:py-4 bg-gradient-to-r from-yellow-300 to-yellow-500 text-black font-semibold " +
+    "text-sm md:text-base rounded-2xl shadow-lg hover:shadow-xl transition " +
+    className;
+
+  // If an explicit onClick is provided, render a normal button that uses that handler.
+  if (props.onClick) {
+    return (
+      <button className={classes} {...props}>
+        {label}
+      </button>
+    );
+  }
+
+  // Otherwise, render the RegisterButton so the default CTA initiates the payment flow.
+  return <RegisterButton amount={props.amount ?? 99} className={classes} label={label} />;
 }
 
 /*********************************
@@ -433,8 +438,7 @@ function TransformGraph() {
         </motion.div>
 
       </div>
-
-      <PrimaryButton className="mt-14" />
+      {/* Register button removed from this section per request */}
     </section>
   );
 }
@@ -553,22 +557,66 @@ function Bonuses() {
       </h2>
 
       <div className="grid md:grid-cols-3 gap-10 max-w-6xl mx-auto">
-        {[1, 2, 3, 4, 5, 6].map((b) => (
+        {(
+          [
+            {
+              id: 1,
+              img: "/bonus1.png",
+              title: "Employee Retention PowerKit",
+              subtitle: "A proven toolkit to keep your best employees loyal, motivated & long-term.",
+            },
+            {
+              id: 2,
+              img: "/bonus2.png",
+              title: "Branch / Franchise Expansion PowerKit",
+              subtitle: "Your strategic blueprint to scale confidently into new locations.",
+            },
+            {
+              id: 3,
+              img: "/bonus3.png",
+              title: "Business Automation PowerKit",
+              subtitle: "Systemize your operations and reduce manual workload effortlessly.",
+            },
+            {
+              id: 4,
+              img: "/bonus4.png",
+              title: "Funding Raising PowerKit",
+              subtitle: "A step-by-step playbook to prepare, pitch & secure business funding.",
+            },
+            {
+              id: 5,
+              img: "/bonus5.png",
+              title: "Export–Import Launch PowerKit",
+              subtitle: "A practical guide to start, manage & grow your export–import journey.",
+            },
+            {
+              id: 6,
+              img: "/bonus6.png",
+              title: "Growth Diagnosis PowerKit",
+              subtitle: "Identify bottlenecks, fix hidden gaps & unlock fast business growth.",
+            },
+          ]
+        ).map((item) => (
           <motion.div
-            key={b}
+            key={item.id}
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
+            whileHover={{ scale: 1.03 }}
             transition={{ duration: 0.6 }}
             viewport={{ once: true, amount: 0.2 }}
-            className="bg-white p-8 rounded-2xl border border-yellow-200 shadow-lg hover:scale-105 transition-all duration-300"
+            className="bg-white p-8 rounded-2xl border border-yellow-200 shadow-lg hover:shadow-xl transition-all duration-300"
           >
-            <div className="h-40 bg-yellow-100 border border-yellow-300 rounded-xl mb-4 shadow-inner" />
+            <img
+              src={item.img}
+              alt={item.title}
+              loading="lazy"
+              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+              className="w-28 h-28 md:w-36 md:h-36 object-contain mb-4 mx-auto"
+            />
 
-            <h3 className="text-2xl font-semibold mb-2 text-yellow-700">Premium Bonus #{b}</h3>
+            <h3 className="text-2xl font-semibold mb-2 text-yellow-700">{item.title}</h3>
 
-            <p className="text-zinc-600">
-              High-value resource unlocked exclusively for committed action-takers.
-            </p>
+            <p className="text-zinc-600">{item.subtitle}</p>
           </motion.div>
         ))}
       </div>
@@ -657,7 +705,9 @@ function OfferShowcase({ miniMinutes, miniSeconds }) {
           </div>
         </div>
 
-        <PrimaryButton className="mt-6" />
+        <RegisterButton className={
+          "mt-6 px-8 py-3 md:px-12 md:py-4 bg-gradient-to-r from-yellow-300 to-yellow-500 text-black font-semibold text-sm md:text-base rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 transition"
+        } />
       </div>
     </section>
   );
@@ -763,7 +813,9 @@ function Guarantee() {
         </p>
 
         <div className="text-center mt-8">
-          <PrimaryButton label="Register Now at ₹99/- Only" />
+          <RegisterButton className={
+            "px-8 py-3 md:px-12 md:py-4 bg-gradient-to-r from-yellow-300 to-yellow-500 text-black font-semibold text-sm md:text-base rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 transition"
+          } />
         </div>
       </div>
     </section>
@@ -789,9 +841,9 @@ function VideoTestimonials() {
   }, []);
 
   const baseVideos = [
-    "https://drive.google.com/uc?export=download&id=1q9lIK8KavQG_OcXVUe_WOoS12yOw1X1b",
-    "test2.mp4",
     "test3.mp4",
+    "test1.mp4",
+    "test2.mp4",
     "test4.mp4",
     "test5.mp4",
     "test6.mp4",
@@ -951,19 +1003,21 @@ function FAQ() {
 function PrivacyFooter() {
   return (
     <section
-      className="py-12 bg-white text-zinc-600 px-6 text-center border-t border-yellow-200"
+      className="pt-12 pb-24 bg-white text-zinc-600 px-6 text-center border-t border-yellow-200"
       data-testid="privacy-footer"
     >
-      <div className="flex flex-col items-center gap-4">
-        <img src="./logo.png" alt="Company Logo" className="h-20 md:h-24 opacity-100" />
+      <div className="flex flex-col items-center gap-3">
+        <img src="./logo.png" alt="Company Logo" className="h-16 md:h-20 mb-1" />
 
-        <p className="text-sm max-w-xl">
-          We value your privacy. All your details are securely encrypted and never shared with third parties.
-        </p>
+        <p className="text-sm text-zinc-600 mt-2">© 2025 Rajiv Talreja. All rights reserved.</p>
 
-        <a href="#" className="underline text-zinc-600 hover:text-black transition">
-          Privacy Policy
-        </a>
+        <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 mt-3">
+          <a href="/terms" className="underline text-zinc-600 hover:text-black transition text-sm">Terms and Conditions</a>
+          <span className="hidden sm:inline">•</span>
+          <a href="/privacy" className="underline text-zinc-600 hover:text-black transition text-sm">Privacy Policy</a>
+          <span className="hidden sm:inline">•</span>
+          <a href="/refund" className="underline text-zinc-600 hover:text-black transition text-sm">Refund Policy</a>
+        </div>
       </div>
     </section>
   );
@@ -988,7 +1042,9 @@ function StickyOfferBar({ timeLeft, format }) {
         <span className="text-xl font-bold">{format(timeLeft)}</span>
       </div>
 
-      <PrimaryButton label="Register Now" />
+      <RegisterButton className={
+        "px-8 py-3 md:px-12 md:py-4 bg-gradient-to-r from-yellow-300 to-yellow-500 text-black font-semibold text-sm md:text-base rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 transition"
+      } />
     </div>
   );
 }
@@ -1007,7 +1063,7 @@ export default function LandingPage() {
       <ProgressBar />
       <ExitPopup />
 
-  <div className="min-h-screen w-full bg-white text-black font-sans relative pt-12">
+  <div className="min-h-screen w-full bg-white text-black font-sans relative pt-12 pb-36 md:pb-12">
         {/* Background Glow */}
         <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.12),transparent_60%)] animate-pulse" />
 
