@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useState } from "react";
+import Loader from "./components/Loader";
 
 // Helper to dynamically load Razorpay script
 function loadRazorpayScript() {
@@ -15,7 +16,10 @@ function loadRazorpayScript() {
 }
 
 const RegisterButton = ({ amount = 99, className = "btn", label = "Register Now At ₹99/- Only" }) => {
+  const [loading, setLoading] = useState(false);
+
   const handlePayment = async () => {
+    setLoading(true);
     try {
       await loadRazorpayScript();
 
@@ -37,24 +41,30 @@ const RegisterButton = ({ amount = 99, className = "btn", label = "Register Now 
         description: "1-on-1 Guidance Session",
         order_id: order.id,
         handler: function (response) {
-          // For testing: just log the response (you can verify on backend later)
-          console.log("Razorpay response:", response);
-          alert("Payment response logged to console (check devtools).");
+          // On successful payment, redirect the user to Calendly scheduling page
+          window.location.href = "https://calendly.com/linksvardha/60min";
         },
         theme: { color: "#F6C84C" },
       };
 
+
       const rzp = new window.Razorpay(options);
       rzp.open();
+
+      // checkout opened — clear loading so button becomes interactive again
+      setLoading(false);
     } catch (err) {
       console.error(err);
       alert("Could not initiate payment: " + (err.message || err));
+      setLoading(false);
     }
   };
 
+  const combinedClass = `${className} ${loading ? "opacity-60 cursor-not-allowed" : ""}`;
+
   return (
-    <button onClick={handlePayment} className={className}>
-      {label}
+    <button onClick={handlePayment} className={combinedClass} disabled={loading}>
+      {loading ? <Loader /> : label}
     </button>
   );
 };
