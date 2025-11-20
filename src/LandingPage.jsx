@@ -1224,47 +1224,36 @@ export default function LandingPage() {
   const [usedNames, setUsedNames] = React.useState([]);
   const isMobile = typeof window !== 'undefined' ? window.innerWidth < 600 : false;
   const audioRef = React.useRef(null);
-
-  // Initialize audio once and unlock it on first user interaction (browser autoplay policies)
+  // Initialize audio once and unlock it
   React.useEffect(() => {
-    if (typeof window !== 'undefined') {
-      audioRef.current = new Audio('/ding.mp3');
-      audioRef.current.volume = 0.75;
+    if (typeof window === 'undefined') return;
 
-      const unlockAudio = () => {
-        try {
-          // try to play immediately (unlock)
-          const playPromise = audioRef.current.play();
-          if (playPromise && typeof playPromise.catch === "function") {
-            playPromise.catch(() => {});
-          }
-          // pause instantly (do not wait)
+    audioRef.current = new Audio('/ding.mp3');
+    audioRef.current.volume = 0.6;
+
+    const unlockAudio = () => {
+      if (!audioRef.current) return;
+      const playPromise = audioRef.current.play();
+
+      if (playPromise !== undefined) {
+        playPromise.then(() => {
           audioRef.current.pause();
           audioRef.current.currentTime = 0;
-        } catch (e) {}
-      };
+        }).catch(() => {});
+      }
 
-      // First user interaction unlocks sound (click/touch/pointer)
-      window.addEventListener("click", unlockAudio, { once: true });
-      window.addEventListener("touchstart", unlockAudio, { once: true });
-      window.addEventListener('pointerdown', unlockAudio, { once: true });
+      window.removeEventListener('pointerdown', unlockAudio);
+    };
 
-      // AUTO - attempt a synthetic click shortly after load to help unlock audio
-      const autoClickTimer = setTimeout(() => {
-        try {
-          const evt = new MouseEvent("click", { view: window, bubbles: true, cancelable: true });
-          window.dispatchEvent(evt);
-        } catch (e) {}
-      }, 150);
+    // 🔥 AUTO - ONE TIME CLICK to unlock sound
+    setTimeout(() => {
+      const evt = new MouseEvent('click', { view: window, bubbles: true, cancelable: true });
+      window.dispatchEvent(evt);
+    }, 150); // small delay so browser thinks page interacted
 
-      return () => {
-        clearTimeout(autoClickTimer);
-        window.removeEventListener('pointerdown', unlockAudio);
-        window.removeEventListener("click", unlockAudio);
-        window.removeEventListener("touchstart", unlockAudio);
-      };
-    }
-    return undefined;
+    window.addEventListener('pointerdown', unlockAudio, { once: true });
+
+    return () => window.removeEventListener('pointerdown', unlockAudio);
   }, []);
 
   // Interval to show popups and play the audioRef when available
