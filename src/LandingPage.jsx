@@ -3,6 +3,17 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { Target, Layers, TrendingUp, Users, Lightbulb, CheckCircle } from "lucide-react";
 import RegisterButton from "./RegisterButton";
+import Loader from "./components/Loader";
+
+// Shared random names list used for 'just joined' popups across the site
+const names = [
+  "Amit", "Neha", "Rahul", "Priya", "Karan",
+  "Ritika", "Saurabh", "Divya", "Manish", "Sneha",
+  "Harsh", "Anjali", "Siddharth", "Varun", "Moksha","Amit Sharma", "Rohit Mehta", "Priya Nair", "Karan Ahuja","Sneha Kapoor", "Vikas Jain", "Deepak Rao", "Megha Singh",
+  "Arjun Patel", "Nisha Verma", "Rahul Gupta", "Tina Joseph", "Amit Sharma", "Rohit Mehta", "Priya Nair", "Karan Ahuja",
+  "Sneha Kapoor", "Vikas Jain", "Deepak Rao", "Megha Singh",
+  "Arjun Patel", "Nisha Verma", "Rahul Gupta", "Tina Joseph"
+];
 
 /*********************************
  * Shared UI
@@ -10,7 +21,7 @@ import RegisterButton from "./RegisterButton";
 function PrimaryButton({ label = "Register Now At ₹99/- Only", className = "", ...props }) {
   const classes =
     "px-8 py-3 md:px-12 md:py-4 bg-gradient-to-r from-yellow-300 to-yellow-500 text-black font-semibold " +
-    "text-sm md:text-base rounded-2xl shadow-lg hover:shadow-xl transition " +
+    "text-sm md:text-base rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 animate-buttonGlow " +
     className;
 
   // If an explicit onClick is provided, render a normal button that uses that handler.
@@ -154,7 +165,14 @@ function ExitPopup() {
         <p className="text-zinc-700 mb-6">
           Your ₹99 Guidance session is still available. Don't miss this chance!
         </p>
-        <PrimaryButton label="Continue" onClick={() => setOpen(false)} />
+        <div className="mt-4 flex justify-center gap-4">
+          <PrimaryButton label="Continue" onClick={() => setOpen(false)} />
+          <RegisterButton
+            amount={99}
+            label="Register Now"
+            className="px-6 py-2 bg-gradient-to-r from-yellow-300 to-yellow-500 text-black font-semibold rounded-2xl shadow-lg hover:shadow-xl"
+          />
+        </div>
       </div>
     </div>
   );
@@ -190,19 +208,52 @@ export { PrimaryButton };
  * Stats Strip
  *********************************/
 function StatsStrip() {
+  // animate values when the strip is in view (runs each time it enters viewport)
+  const containerRef = useRef(null);
+  const [inViewCount, setInViewCount] = useState(0);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            // incrementing forces useCountUp to restart via restartKey
+            setInViewCount((c) => c + 1);
+          }
+        });
+      },
+      { threshold: 0.5 }
+    );
+
+    if (containerRef.current) obs.observe(containerRef.current);
+    return () => obs.disconnect();
+  }, []);
+
+  // Animate to requested targets so the numbers remain animated
+  const valA = useCountUp(2400, { duration: 1400, decimals: 0, start: inViewCount > 0, restartKey: inViewCount });
+  const valB = useCountUp(4.96, { duration: 1400, decimals: 2, start: inViewCount > 0, restartKey: inViewCount });
+  const valC = useCountUp(100, { duration: 1400, decimals: 0, start: inViewCount > 0, restartKey: inViewCount });
+  const valD = useCountUp(100, { duration: 1400, decimals: 0, start: inViewCount > 0, restartKey: inViewCount });
+
+  const displayA = `${Math.round(valA).toLocaleString()}+`;
+  const displayB = `${Number(valB).toFixed(2)}★`;
+  const displayC = `${Math.round(valC)}s`;
+  const displayD = `₹${Math.round(valD)}Cr+`;
+
   return (
-    <div className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-6 text-zinc-600 text-sm">
+    <div ref={containerRef} className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-6 text-zinc-600 text-sm">
       <div className="p-6 rounded-2xl bg-white shadow-lg border border-yellow-200 text-black font-semibold">
-        10k+ Founders Trained
+        {displayA} Founders Trained
       </div>
       <div className="p-6 rounded-2xl bg-white shadow-lg border border-yellow-200 text-black font-semibold">
-        4.9★ Avg Rating
+        {displayB} Avg Rating
       </div>
       <div className="p-6 rounded-2xl bg-white shadow-lg border border-yellow-200 text-black font-semibold">
-        200+ Case Studies
+        {displayC} Case Studies
       </div>
       <div className="p-6 rounded-2xl bg-white shadow-lg border border-yellow-200 text-black font-semibold">
-        ₹100Cr+ Results
+        {displayD} Results
       </div>
     </div>
   );
@@ -211,6 +262,20 @@ function StatsStrip() {
 /*********************************
  * HERO SECTION
  *********************************/
+const JoinPopup = ({ name, isMobile }) => (
+  <div
+    className={`
+      fixed z-[9999] px-4 py-3 bg-white shadow-2xl border border-yellow-400 
+      rounded-xl text-black font-semibold flex items-center gap-3 
+      animate-fade-in-out 
+      ${isMobile ? "top-4 left-1/2 -translate-x-1/2" : "bottom-6 right-6"}
+    `}
+  >
+    <div className="h-3 w-3 bg-green-500 rounded-full animate-pulse"></div>
+    <p>{name} just joined!</p>
+  </div>
+);
+
 function Hero({ parallaxY }) {
   return (
     <section
@@ -261,13 +326,89 @@ function Hero({ parallaxY }) {
 /*********************************
  * SUCCESS MARQUEE
  *********************************/
-function SuccessMarquee() {
+// ---------- AUTO-INCREASING JOIN COUNT -----------
+
+function useJoinCounter() {
+  const [count, setCount] = React.useState(50); // starting number
+
+  React.useEffect(() => {
+    // Step 1: check stored value
+    const saved = localStorage.getItem("joinedCount");
+
+    let current = saved ? parseInt(saved, 10) : 50;
+    setCount(current);
+
+    // Step 2: increase every 1 hour (3600000ms)
+    const interval = setInterval(() => {
+      current = current + Math.floor(Math.random() * 3) + 1; // increase 1–3 users
+      localStorage.setItem("joinedCount", current);
+      setCount(current);
+    }, 3600 * 1000);
+
+    // extra: update once on page load after few seconds
+    setTimeout(() => {
+      current = current + Math.floor(Math.random() * 2) + 1;
+      localStorage.setItem("joinedCount", current);
+      setCount(current);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  return count;
+}
+
+// Small hook: animate numbers from 0 -> end over `duration` ms
+function useCountUp(end, { duration = 1400, decimals = 0, start = true, restartKey = 0 } = {}) {
+  const [value, setValue] = React.useState(0);
+  const rafRef = React.useRef(null);
+  const startRef = React.useRef(null);
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!start) {
+      setValue(0);
+      return;
+    }
+
+    // reset and start animation
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    startRef.current = null;
+
+    function step(now) {
+      if (!startRef.current) startRef.current = now;
+      const elapsed = now - startRef.current;
+      const t = Math.min(1, elapsed / duration);
+      const eased = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t; // easeInOutQuad-ish
+      const current = end * eased;
+      setValue(Number(current.toFixed(decimals)));
+      if (t < 1) {
+        rafRef.current = requestAnimationFrame(step);
+      }
+    }
+
+    rafRef.current = requestAnimationFrame(step);
+
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+    // restartKey allows re-triggering the animation when it changes (e.g. on intersection)
+  }, [end, duration, decimals, start, restartKey]);
+
+  return value;
+}
+
+const SuccessMarquee = () => {
+  const joined = useJoinCounter();
+
   return (
-    <div className="w-full bg-transparent py-3 text-center text-yellow-800 font-semibold text-sm md:text-base border-t border-yellow-300">
-      🚀 47 Entrepreneurs Joined in the Last 2 Hours • 98% Satisfaction • Last Registration 3 Minutes Ago
+    <div className="w-full bg-transparent py-3 text-center text-yellow-800 font-semibold text-sm md:text-base border-t border-yellow-300 overflow-hidden">
+      <span className="inline-block animate-marquee2">
+        🚀 {joined} Entrepreneurs Joined • 98% Satisfaction • Last Registration 3 Minutes Ago
+      </span>
     </div>
   );
-}
+};
 
 /*********************************
  * SESSION EXPLAINER
@@ -285,7 +426,7 @@ function SessionExplainer({ miniMinutes, miniSeconds }) {
             <li>● You Get <span className="font-semibold text-yellow-800">Personal Attention</span> on your exact business challenges</li>
             <li>● You Receive a <span className="font-semibold text-yellow-800">Custom Growth Plan</span> designed only for your business</li>
             <li>● You Discover <span className="font-semibold text-yellow-800">specific action steps</span> for revenue, team & systems</li>
-            <li>● You Walk Away With a <span className="font-semibold text-yellow-800">clear 30-day action roadmap</span></li>
+            <li>● You Walk Away With a <span className="font-semibold text-yellow-800">clear Action roadmap</span></li>
             <li>● <span className="font-semibold text-yellow-800">1 Hour</span> That Can Change the Way You Run Your Business</li>
           </ul>
         </div>
@@ -309,7 +450,7 @@ function SessionExplainer({ miniMinutes, miniSeconds }) {
           <div className="flex items-center gap-4 bg-zinc-900 px-5 py-4 rounded-xl border border-zinc-800 shadow-lg w-full sm:w-auto">
             <span className="text-yellow-400 text-2xl sm:text-xl">★★★★★</span>
             <p className="text-zinc-300 text-base sm:text-sm text-center sm:text-left">
-              70,000+ People Rated
+              2,400+ People Rated
               <br className="block sm:hidden" />
               <span className="block">My Programs with 4.96 Star</span>
             </p>
@@ -604,19 +745,22 @@ function Bonuses() {
             whileHover={{ scale: 1.03 }}
             transition={{ duration: 0.6 }}
             viewport={{ once: true, amount: 0.2 }}
-            className="bg-white p-8 rounded-2xl border border-yellow-200 shadow-lg hover:shadow-xl transition-all duration-300"
+            className="bg-white p-6 md:p-8 rounded-2xl border border-yellow-200 shadow-lg hover:shadow-xl transition-all duration-300"
           >
-            <img
-              src={item.img}
-              alt={item.title}
-              loading="lazy"
-              onError={(e) => { e.currentTarget.style.display = 'none'; }}
-              className="w-28 h-28 md:w-36 md:h-36 object-contain mb-4 mx-auto"
-            />
+            <div className="flex justify-center">
+              <img
+                src={item.img}
+                alt={item.title}
+                loading="lazy"
+                onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                className="w-full max-w-[320px] md:max-w-[420px] lg:max-w-[480px] h-auto object-contain mb-2"
+                style={{ maxHeight: '300px' }}
+              />
+            </div>
 
-            <h3 className="text-2xl font-semibold mb-2 text-yellow-700">{item.title}</h3>
+            <h3 className="text-sm md:text-2xl font-semibold mb-1 text-yellow-700">{item.title}</h3>
 
-            <p className="text-zinc-600">{item.subtitle}</p>
+            <p className="text-zinc-600 text-sm md:text-base">{item.subtitle}</p>
           </motion.div>
         ))}
       </div>
@@ -650,7 +794,7 @@ function TrustBadges() {
  *********************************/
 function CTA() {
   return (
-    <section className="py-28 text-center bg-white border-t border-yellow-200 px-6" data-testid="cta">
+    <section className="py-12 text-center bg-white border-t border-yellow-200 px-6" data-testid="cta">
       <motion.h2
         initial={{ opacity: 0, y: -20 }}
         whileInView={{ opacity: 1, y: 0 }}
@@ -676,38 +820,42 @@ function CTA() {
  *********************************/
 function OfferShowcase({ miniMinutes, miniSeconds }) {
   return (
-    <section
-      className="py-20 bg-white text-black px-6 text-center border-t border-yellow-200"
-      data-testid="offer-showcase"
-    >
-      <div className="max-w-3xl mx-auto">
-        <p className="line-through text-zinc-500 text-lg">Total Value ₹10,000/-</p>
-        <p className="text-2xl font-semibold mt-2">Regular Price: ₹999/-</p>
+    <section className="py-8 bg-white text-black px-6 text-center" id="pricing">
+      <div className="max-w-3xl mx-auto bg-white rounded-3xl shadow-xl border border-yellow-300 p-6 relative">
+        
+        {/* Soft glow background */}
+        <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,rgba(255,235,130,0.35),transparent_70%)] rounded-3xl" />
 
-        <div className="mt-6 bg-[#5c4642] text-white py-6 rounded-xl shadow-lg">
-          <p className="text-xl font-semibold">Today's Price:</p>
-          <p className="text-5xl font-extrabold text-yellow-300">₹99</p>
+        {/* Title */}
+        <h2 className="text-3xl md:text-4xl font-extrabold text-yellow-700 mb-3">
+          1-on-1 Coaching Session (Today Only)
+        </h2>
+
+        {/* Pricing Row */}
+        <div className="flex justify-center items-end gap-4 mt-6">
+          <span className="diag-strike text-2xl text-zinc-500">₹9999</span>
+          <span className="text-6xl font-extrabold text-yellow-600">₹99</span>
         </div>
 
-        <p className="mt-6 text-lg">
-          Grab your seat now & unlock bonuses worth ₹10,000/-
+        {/* Smart Explanation – short & classy */}
+        <p className="mt-4 text-zinc-700 text-lg font-medium max-w-lg mx-auto">
+          Start your session for <span className="font-bold text-yellow-700">just ₹99, Today.</span> If the session genuinely helps you, you pay the remaining <span className="font-bold text-yellow-700">₹900 after the session.</span>
         </p>
 
-        {/* Timer */}
-        <div className="flex justify-center gap-6 mt-10">
-          <div className="bg-black text-white px-6 py-4 rounded-xl border border-white/40 shadow-xl text-center">
-            <p className="text-4xl font-bold">{miniMinutes}</p>
-            <span className="block text-sm mt-1">Minutes</span>
-          </div>
-          <div className="bg-black text-white px-6 py-4 rounded-xl border border-white/40 shadow-xl text-center">
-            <p className="text-4xl font-bold">{miniSeconds}</p>
-            <span className="block text-sm mt-1">Seconds</span>
-          </div>
+        {/* Short clarity line */}
+        <p className="text-sm text-zinc-600 mt-4">
+          If not satisfied, request a refund within 1 Hour of session — no questions asked.
+        </p>
+
+        {/* CTA */}
+        <div className="mt-8">
+          <PrimaryButton
+            amount={99}
+            label={"Book Your Slot for ₹99"}
+            className={"relative px-8 py-4 bg-gradient-to-r from-yellow-300 to-yellow-500 text-black font-semibold text-base rounded-2xl shadow-lg hover:scale-105 transition-all duration-300 animate-buttonGlow"}
+          />
         </div>
 
-        <RegisterButton className={
-          "mt-6 px-8 py-3 md:px-12 md:py-4 bg-gradient-to-r from-yellow-300 to-yellow-500 text-black font-semibold text-sm md:text-base rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 transition"
-        } />
       </div>
     </section>
   );
@@ -719,13 +867,13 @@ function OfferShowcase({ miniMinutes, miniSeconds }) {
 function CoachStats() {
   const stats = [
     ["16", "Years of Experience"],
-    ["50M", "Entrepreneurs Reached"],
+    ["60M", "Entrepreneurs Reached"],
     ["500+", "Seminars Conducted"],
-    ["500K", "Social Followers"],
-    ["700K", "Paid Customers"],
-    ["18K+", "Entrepreneur Community"],
-    ["2000+", "Guidance Clients"],
-    ["190+", "Industries Worked With"],
+    ["600K", "Followers"],
+    ["2,400", "Paid Customers"],
+    ["2400+", "Entrepreneur Community"],
+    ["2,400", "Guidance Clients"],
+    ["210+", "Industries Worked With"],
   ];
 
   return (
@@ -768,7 +916,18 @@ function Guarantee() {
       className="py-20 px-6 bg-white text-black border-t border-yellow-200"
       data-testid="guarantee"
     >
-      <div className="max-w-4xl mx-auto bg-white p-10 rounded-3xl border border-yellow-200 shadow-xl">
+      <div className="relative max-w-4xl mx-auto bg-white p-10 rounded-3xl border border-yellow-200 shadow-xl pt-20">
+
+        {/* Floating Logo */}
+        <div className="absolute -top-20 left-1/2 -translate-x-1/2">
+          <img
+            src="/money-back.png"
+            alt="Money Back Guarantee"
+            className="w-44 h-auto drop-shadow-xl"
+            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+          />
+        </div>
+
         <h2 className="text-3xl md:text-4xl font-bold text-center mb-6 text-orange-500">
           Our Guarantee
         </h2>
@@ -797,9 +956,7 @@ function Guarantee() {
         </p>
 
         <p className="text-zinc-600 leading-relaxed mb-6">
-          If you feel the session did not deliver enough value, I offer a
-          complete refund of your ₹99 fee — no questions asked. Simply email{" "}
-          <span className="text-orange-300">refund@arunnguptaa.com</span>.
+          If not satisfied, request a refund within 1 Hour of session — no questions asked. Simply email <span className="text-orange-300">refund@arunlive.com</span>.
         </p>
 
         <p className="text-zinc-600 mb-6">
@@ -842,11 +999,11 @@ function VideoTestimonials() {
 
   const baseVideos = [
     "test3.mp4",
-    "test1.mp4",
-    "test2.mp4",
+    "test6.mp4",
     "test4.mp4",
     "test5.mp4",
-    "test6.mp4",
+    "test1.mp4",
+    "test2.mp4",
   ];
 
   const slidesCount = baseVideos.length;
@@ -972,12 +1129,12 @@ function VideoTestimonials() {
 function FAQ() {
   const list = [
     { q: "Is this a 1-on-1 session?", a: "Yes. This is a personalised Guidance session where only you & the coach are present." },
-    { q: "What happens in the session?", a: "You get personalised clarity, custom strategies, and a 30-day roadmap." },
+    { q: "What happens in the session?", a: "You get personalised clarity, custom strategies, and a Roadmap." },
     { q: "Do I need to prepare?", a: "Yes. After registration, you'll receive a short form for details." },
     { q: "Can I reschedule?", a: "Yes, once if informed 24 hours in advance." },
     { q: "Will you help with exact problems?", a: "Absolutely. Everything is business-specific." },
-    { q: "Refund policy?", a: "If not satisfied, request a refund within 24 hours — no questions asked." },
-    { q: "Is ₹99 the final price?", a: "Yes, limited-time offer for new clients only." },
+    { q: "Refund policy?", a: "If not satisfied, request a refund within 1 Hour of session — no questions asked." },
+    { q: "Is ₹99 the final price?", a: "Yes, limited-time offer for new clients only. However you can pay Rs 900 if you are 100% satisfied with the consultancy, just after the session." },
     { q: "Will I get notes?", a: "Yes, you'll receive a written action roadmap after session." },
   ];
 
@@ -1009,14 +1166,14 @@ function PrivacyFooter() {
       <div className="flex flex-col items-center gap-3">
         <img src="./logo.png" alt="Company Logo" className="h-16 md:h-20 mb-1" />
 
-        <p className="text-sm text-zinc-600 mt-2">© 2025 Rajiv Talreja. All rights reserved.</p>
+        <p className="text-sm text-zinc-600 mt-2">© 2025 Arunn Guptaa. All rights reserved.</p>
 
         <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 mt-3">
-          <a href="/terms" className="underline text-zinc-600 hover:text-black transition text-sm">Terms and Conditions</a>
+          <a href="/terms.html" className="underline text-zinc-600 hover:text-black transition text-sm">Terms and Conditions</a>
           <span className="hidden sm:inline">•</span>
-          <a href="/privacy" className="underline text-zinc-600 hover:text-black transition text-sm">Privacy Policy</a>
+          <a href="/privacy.html" className="underline text-zinc-600 hover:text-black transition text-sm">Privacy Policy</a>
           <span className="hidden sm:inline">•</span>
-          <a href="/refund" className="underline text-zinc-600 hover:text-black transition text-sm">Refund Policy</a>
+          <a href="/refund.html" className="underline text-zinc-600 hover:text-black transition text-sm">Refund Policy</a>
         </div>
       </div>
     </section>
@@ -1034,7 +1191,10 @@ function StickyOfferBar({ timeLeft, format }) {
     >
       <div className="flex items-center gap-3">
         <span className="text-base sm:text-lg font-bold text-yellow-700">Today's Price:</span>
-        <span className="text-2xl font-extrabold text-yellow-600">₹99</span>
+        <div className="flex items-end gap-3">
+          <span className="diag-strike text-lg text-zinc-500">₹9999</span>
+          <span className="text-2xl font-extrabold text-yellow-600">₹99</span>
+        </div>
       </div>
 
       <div className="flex items-center gap-2 text-yellow-700 font-semibold">
@@ -1058,12 +1218,82 @@ export default function LandingPage() {
 
   const { timeLeft, format, miniMinutes, miniSeconds } = useOfferTimer();
 
+  // Popup logic: show a random unused name periodically with sound
+  const joinNames = names;
+  const [popupName, setPopupName] = React.useState(null);
+  const [usedNames, setUsedNames] = React.useState([]);
+  const isMobile = typeof window !== 'undefined' ? window.innerWidth < 600 : false;
+  const audioRef = React.useRef(null);
+  const [audioUnlocked, setAudioUnlocked] = React.useState(false);
+
+  // Initialize audio once and unlock it on first user interaction (browser autoplay policies)
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    audioRef.current = new Audio('/ding.mp3');
+    audioRef.current.preload = 'auto';
+    audioRef.current.volume = 0.6;
+
+    const unlock = () => {
+      if (!audioRef.current) return;
+      // Try to play then pause to unlock audio playback on many browsers
+      const p = audioRef.current.play();
+      if (p && typeof p.catch === 'function') p.catch(() => {});
+      // Pause immediately (if it started)
+      try {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      } catch (e) {}
+      setAudioUnlocked(true);
+      // If a popup is currently visible, play immediately so sound and popup align
+      try {
+        if (audioRef.current && popupName) {
+          audioRef.current.currentTime = 0;
+          const pp = audioRef.current.play();
+          if (pp && typeof pp.catch === 'function') pp.catch(() => {});
+        }
+      } catch (e) {}
+      window.removeEventListener('pointerdown', unlock);
+    };
+
+    window.addEventListener('pointerdown', unlock, { once: true });
+
+    return () => window.removeEventListener('pointerdown', unlock);
+  }, []);
+
+  // Interval to show popups and play the audioRef when available
+  React.useEffect(() => {
+    const showPopup = () => {
+      const available = joinNames.filter((n) => !usedNames.includes(n));
+      if (available.length === 0) return;
+
+      const randomName = available[Math.floor(Math.random() * available.length)];
+      setUsedNames((prev) => [...prev, randomName]);
+      setPopupName(randomName);
+
+      // play sound if audio is ready (or defer until unlocked)
+      try {
+        if (audioRef.current && audioUnlocked) {
+          audioRef.current.currentTime = 0;
+          const p = audioRef.current.play();
+          if (p && typeof p.catch === 'function') p.catch(() => {});
+        }
+      } catch (e) {}
+
+      setTimeout(() => setPopupName(null), 4000);
+    };
+
+    // Start popups regardless; sound will only play when unlocked. Keep interval.
+    const interval = setInterval(showPopup, 9000);
+    return () => clearInterval(interval);
+  }, [usedNames]);
+
   return (
     <>
       <ProgressBar />
       <ExitPopup />
 
-  <div className="min-h-screen w-full bg-white text-black font-sans relative pt-12 pb-36 md:pb-12">
+  <div className="min-h-screen w-full bg-white text-black font-sans relative pt-6 pb-12 md:pb-12">
         {/* Background Glow */}
         <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.12),transparent_60%)] animate-pulse" />
 
@@ -1098,6 +1328,12 @@ export default function LandingPage() {
         <StickyOfferBar timeLeft={timeLeft} format={format} />
       </div>
 
+      {popupName && (
+        <div className={`fixed ${isMobile ? "top-4 left-1/2 -translate-x-1/2" : "bottom-24 right-4"} z-[9999] bg-white px-4 py-2 rounded-xl shadow-lg border border-yellow-300 text-sm text-black animate-fade-in-out`}>
+          {popupName} just joined now!
+        </div>
+      )}
+
       {/* Inline styles */}
       <style>{`
         @keyframes marqueeMove {
@@ -1110,9 +1346,57 @@ export default function LandingPage() {
           white-space: nowrap;
         }
         .animate-marquee2 {
-          display: inline-flex;
+          display: inline-block;
           animation: marqueeMove 22s linear infinite;
           white-space: nowrap;
+          will-change: transform;
+          transform: translateZ(0);
+        }
+        @keyframes fadeInOut {
+          0% { opacity: 0; transform: translateY(8px); }
+          10% { opacity: 1; transform: translateY(0); }
+          90% { opacity: 1; transform: translateY(0); }
+          100% { opacity: 0; transform: translateY(8px); }
+        }
+        .animate-fade {
+          animation: fadeInOut 4s ease-in-out forwards;
+        }
+
+        /* Button glow animation requested */
+        @keyframes buttonGlow {
+          0% { box-shadow: 0 0 12px rgba(255, 200, 0, 0.4); transform: scale(1); }
+          50% { box-shadow: 0 0 22px rgba(255, 200, 0, 0.7); transform: scale(1.03); }
+          100% { box-shadow: 0 0 12px rgba(255, 200, 0, 0.4); transform: scale(1); }
+        }
+
+        /* Diagonal strike for old price */
+        .diag-strike {
+          position: relative;
+          display: inline-block;
+        }
+
+        .diag-strike::after {
+          content: '';
+          position: absolute;
+          left: -8%;
+          right: -8%;
+          top: 50%;
+          height: 2px;
+          background: currentColor;
+          opacity: 0.8;
+          transform: rotate(-18deg);
+          transform-origin: center;
+          border-radius: 2px;
+        }
+
+        .animate-buttonGlow {
+          animation: buttonGlow 2s ease-in-out infinite;
+        }
+
+        /* Apply glow to all native buttons unless explicitly opted out */
+        button:not(.no-glow) {
+          animation: buttonGlow 2s ease-in-out infinite;
+          transition: box-shadow 0.25s ease, transform 0.2s ease;
         }
       `}</style>
     </>
