@@ -53,7 +53,16 @@ app.post("/create-order", async (req, res) => {
     });
     res.json(order);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    const statusCode = Number.isInteger(err?.statusCode) ? err.statusCode : 500;
+    const errorMessage =
+      err?.error?.description ||
+      err?.message ||
+      "Unable to create payment order";
+
+    res.status(statusCode).json({
+      error: errorMessage,
+      code: err?.error?.code || null,
+    });
   }
 });
 

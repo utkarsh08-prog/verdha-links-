@@ -1,147 +1,31 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
-import Loader from "./components/Loader";
+import React from "react";
+import { useNavigate } from "react-router-dom";
 
-// expose a global helper that dispatches a CustomEvent used for a full-page loader
-window.globalLoading = (status) => {
-  const event = new CustomEvent("globalLoading", { detail: status });
-  window.dispatchEvent(event);
-};
+const RegisterButton = ({ className = "btn", label = "Register Now At ₹99/- Only", targetPath = "/session-booking" }) => {
+  const navigate = useNavigate();
 
-const CALENDLY_URL = "https://calendly.com/linksvardha/60min";
-const CALENDLY_SCRIPT_SRC = "https://assets.calendly.com/assets/external/widget.js";
-
-function loadCalendlyScript() {
-  return new Promise((resolve, reject) => {
-    if (typeof window === "undefined") return resolve();
-    if (window.Calendly) return resolve();
-    const existing = document.querySelector(`script[src="${CALENDLY_SCRIPT_SRC}"]`);
-    if (existing) {
-      existing.addEventListener("load", resolve, { once: true });
-      return;
-    }
-    const script = document.createElement("script");
-    script.src = CALENDLY_SCRIPT_SRC;
-    script.async = true;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error("Calendly script failed to load"));
-    document.head.appendChild(script);
-  });
-}
-
-function loadRazorpayScript() {
-  return new Promise((resolve, reject) => {
-    if (typeof window === "undefined") return resolve();
-    if (window.Razorpay) return resolve();
-    const script = document.createElement("script");
-    script.src = "https://checkout.razorpay.com/v1/checkout.js";
-    script.async = true;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error("Razorpay script failed to load"));
-    document.head.appendChild(script);
-  });
-}
-
-const RegisterButton = ({ amount = 99, className = "btn", label = "Register Now At ₹99/- Only" }) => {
-  const [loading, setLoading] = useState(false);
-  const paymentStartedRef = useRef(false);
-
-  const openPayment = useCallback(async () => {
-    try {
-      if (paymentStartedRef.current) return;
-      paymentStartedRef.current = true;
-
-      await loadRazorpayScript();
-      const res = await fetch("https://main-backend-dzf5.onrender.com/create-order", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount }),
-      });
-
-      if (!res.ok) throw new Error("Failed to create order");
-      const order = await res.json();
-
-      const options = {
-        key: "rzp_live_SGpnetdYlJs9OI",
-        amount: order.amount,
-        currency: "INR",
-        name: "Arunn Guptaa",
-        description: "1-on-1 Guidance Session",
-        order_id: order.id,
-        handler: async function () {
-          try {
-            alert("Payment Successful! Your session is confirmed.");
-          } finally {
-            setLoading(false);
-            window.globalLoading(false);
-          }
-        },
-        theme: { color: "#F6C84C" },
-      };
-
-      const rzp = new window.Razorpay(options);
-      rzp.open();
-    } catch (err) {
-      console.error(err);
-      setLoading(false);
-      window.globalLoading(false);
-    }
-  }, [amount]);
-
-  useEffect(() => {
-    const onMessage = (event) => {
-      if (!event?.data?.event) return;
-      if (event.data.event === "calendly.event_scheduled") {
-        openPayment();
-      }
-    };
-    window.addEventListener("message", onMessage);
-    return () => window.removeEventListener("message", onMessage);
-  }, [openPayment]);
-
-  const handleBooking = async () => {
-    setLoading(true);
-    window.globalLoading(true);
-    try {
-      await loadCalendlyScript();
-      if (window.Calendly && typeof window.Calendly.initPopupWidget === "function") {
-        window.Calendly.initPopupWidget({ url: CALENDLY_URL });
-      } else {
-        window.open(CALENDLY_URL, "_blank");
-      }
-    } catch (err) {
-      console.error(err);
-      setLoading(false);
-      window.globalLoading(false);
-    }
+  const openSessionBooking = () => {
+    navigate(targetPath);
   };
 
-  const disabledAttr = loading ? { disabled: true } : {};
-
   const baseBtnClasses = `relative text-black font-extrabold rounded-3xl bg-gradient-to-r from-[#FFD700] to-[#FFB300] shadow-[0_0_15px_rgba(255,200,0,0.8)] hover:shadow-[0_0_30px_rgba(255,200,0,1)] transition-all duration-300 hover:scale-105 animate-pulseGlow overflow-hidden`;
-  const mergedClass = `${className ? className + ' ' : ''}${baseBtnClasses} ${loading ? 'opacity-60 cursor-not-allowed' : ''}`;
+  const mergedClass = `${className ? className + ' ' : ''}${baseBtnClasses}`;
 
   return (
     <>
       <button
-        onClick={handleBooking}
+        onClick={openSessionBooking}
         className={mergedClass}
-        {...disabledAttr}
       >
-        {loading ? (
-          <div className="flex items-center justify-center">
-            <Loader />
-          </div>
-        ) : (
-          <>
-            <span className="absolute inset-0 bg-gradient-to-r from-white/20 via-transparent to-white/20 rotate-12 animate-shine" />
+        <>
+          <span className="absolute inset-0 bg-gradient-to-r from-white/20 via-transparent to-white/20 rotate-12 animate-shine" />
 
-            <span className="flex items-center gap-2 relative z-10">
-              {label ?? `Register Now @ ₹${amount}`}
-              <span className="text-sm font-semibold px-2 py-0.5 bg-red-600 text-yellow-300 rounded-md animate-priceBlink">Limited</span>
-              <span className="text-xl animate-arrowMove">👈</span>
-            </span>
-          </>
-        )}
+          <span className="flex items-center gap-2 relative z-10">
+            {label}
+            <span className="text-sm font-semibold px-2 py-0.5 bg-red-600 text-yellow-300 rounded-md animate-priceBlink">Book Session</span>
+            <span className="text-xl animate-arrowMove">👈</span>
+          </span>
+        </>
       </button>
 
       <style>{`

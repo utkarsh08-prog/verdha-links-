@@ -9,8 +9,6 @@ import AppLoader from "./components/AppLoader";
 import SoldOutBar from "./components/SoldOutBar";
 import FeaturedCarousel from "./components/FeaturedCarousel";
 import StickySoldTimer from "./components/StickySoldTimer";
-import LiveBanner from "./components/LiveBanner";
-import HeroSection from "./components/HeroSection";
 import useSoldOutProgress from "./hooks/useSoldOutProgress";
 import GuaranteePopup from "./components/GuaranteePopup";
 
@@ -232,9 +230,32 @@ function ExitPopup() {
   );
 }
 
-// LiveTodayBanner replaced with dynamic LiveBanner component from API
-// Use <LiveBanner /> component instead in the main render
+function LiveTodayBanner() {
+  useLiveViewers("liveViewers");
 
+  return (
+    <section className="w-full px-6 mt-6 mb-10 flex flex-col items-center text-center">
+      <div className="bg-yellow-100 text-yellow-800 px-6 py-4 rounded-2xl shadow-lg max-w-2xl w-full text-sm md:text-base font-semibold tracking-wide border border-yellow-300/40">
+        <>
+          <span className="flex justify-center items-center gap-2 mb-1">
+            <span className="h-3 w-3 bg-red-500 rounded-full animate-ping" />
+            <span className="text-red-600 font-bold">LIVE TODAY</span>
+          </span>
+
+          <span className="font-bold">1-on-1 Private Business Guidance Session</span>
+          <br />
+          <span className="opacity-90 text-sm">(Only a few slots left)</span>
+
+          <div className="mt-1 text-xs text-red-600 font-semibold">
+            👁️ <span id="liveViewers">57</span> people viewing right now
+          </div>
+        </>
+      </div>
+    </section>
+  );
+}
+
+export { PrimaryButton };
 /*********************************
  * Stats Strip
  *********************************/
@@ -310,7 +331,6 @@ const JoinPopup = ({ name, isMobile }) => (
 function Hero({ parallaxY }) {
   return (
     <section
-      id="hero"
       className="min-h-[70vh] flex flex-col items-center justify-center text-center px-6 bg-white relative overflow-hidden"
       data-testid="hero"
     >
@@ -354,8 +374,6 @@ function Hero({ parallaxY }) {
     </section>
   );
 }
-
-// Old Hero function kept for fallback - HeroSection (dynamic from API) is used instead in render
 
 /*********************************
  * SUCCESS MARQUEE
@@ -753,7 +771,6 @@ function FeaturesGrid() {
 
   return (
     <section
-      id="features"
       className="py-20 px-6 md:px-10 grid md:grid-cols-3 gap-10 bg-white border-t border-yellow-200"
       data-testid="features"
     >
@@ -1181,7 +1198,7 @@ function VideoTestimonials() {
   const prevGroup = () => setGroupIndex((g) => (g - 1 + groupCount) % groupCount);
 
   return (
-    <section id="testimonials" className="py-20 bg-black text-white px-6" data-testid="video-testimonials">
+    <section className="py-20 bg-black text-white px-6" data-testid="video-testimonials">
       <h2 className="text-3xl md:text-5xl font-bold text-center mb-10">Client Video Feedback</h2>
 
       <div className="relative max-w-5xl mx-auto overflow-hidden rounded-2xl border border-zinc-800 shadow-2xl">
@@ -1250,7 +1267,7 @@ function FAQ() {
   ];
 
   return (
-    <section id="faq" className="py-20 bg-white px-6 text-black border-t border-yellow-200">
+    <section className="py-20 bg-white px-6 text-black border-t border-yellow-200">
       <h2 className="text-3xl md:text-5xl font-bold text-center mb-12">Frequently Asked Questions</h2>
 
       <div className="max-w-3xl mx-auto space-y-6">
@@ -1589,9 +1606,8 @@ export default function LandingPage() {
           />
         </div>
 
-        {/* Dynamic Components from API */}
-        <LiveBanner />
-        <HeroSection />
+        <LiveTodayBanner />
+        <Hero parallaxY={parallaxY} />
         <SuccessMarquee />
 
         {/* Sold out progress bar (dynamic) */}
